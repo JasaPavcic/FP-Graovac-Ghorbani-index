@@ -84,7 +84,7 @@ seznam = []
 sez_grafov = list(graphs(n, augment='vertices')) #seznam vseh moznih grafov z od 0 do n vozlisci
 sez_povezanih = []
 for g in sez_grafov:
-    if g.is_connected() == True:       
+    if g.is_connected() == True: #upostevam samo povezane grafe      
         sez_povezanih.append(g)
 for g in sez_povezanih:
     if g.order() > 0: #narisem samo tiste z vsaj 1 vozliscem
