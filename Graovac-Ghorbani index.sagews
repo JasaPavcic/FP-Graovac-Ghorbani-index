@@ -2,6 +2,7 @@
 import sage.all
 import math
 from sage.graphs.trees import TreeIterator
+import random
 
 def ustvariGraf(n):
     G = Graph()
@@ -38,71 +39,142 @@ def GGI(G):
 
     return vsota
 
+#definiram funkcijo, ki mi pove, ali je v grafu trikotnik
+def vsebuje_trikotnik(G):
+    for povezava in G.edges():
+      for vozl in G.vertices():       
+         if G.has_edge(vozl, povezava[0]) and G.has_edge(vozl, povezava[1]):
+              return True
+    return False
 
-A = ustvariGraf(4)
-dodajPovezave(A,[(3,4),(4,0),(1,2),(0,1),(2,3)])
-A.plot()
-vsota = GGI(A)
-#n je zato ker drugace ne vrne numericne vrednosti
-print(n(vsota))
+#1. del - tocno racunanje
 
-
-#narišem vsa drevesa s fiksnim številom vozlišč od 1 do 5 in na njih izračunam GGI
-l = 6
-for n in range(1, l):
-    tree_iterator = graphs.trees(n)
-    for T in tree_iterator:
-        T.plot()
-        vrednost = float(GGI(T))
-        print(vrednost)
-
-#narišem vse povezane dvodelne grafe na od 1 do 5 vozliščih in na njih izračunam GGI
-k = 5 #stevilo vozlisc
-sez_dvodelnih = list( graphs(k, lambda G: G.is_bipartite(), augment='vertices') )
-for g in sez_dvodelnih:
-    if g.is_connected() and g.order() > 0: #narisem samo tiste z vsaj 1 vozliscem in poskrbim, da so grafi povezani
-        plot(g)
-        vrednost = float(GGI(g))
-        print(vrednost)
-        
-#narisem vse grafe brez trikotnikov na 1 do 5 vozliscih in na njih izracunam GGI
-m = 5
-sez_grafov_1 = list(graphs(m, augment='vertices'))
-sez_brez_t = []
-for g in sez_grafov_1:
-    if vsebuje_trikotnik(g) == False and g.is_connected() == True:
-        sez_brez_t.append(g)
-for g in sez_brez_t:
-    if g.order() > 0: #narisem samo tiste z vsaj 1 vozliscem
-        plot(g)
-        vrednost = float(GGI(g))
-        print(vrednost)
-        
-#narisem vse splosne povezane grafe na 1 do 5 vozliscih in na njih izracunam GGI. Ustvarim tudi seznam, v katerem bodo 'tuples', ki bodo vsebovali graf in njegov GG indeks. Nato bom ta seznam uredila po narascajocem indeksu, da vidim, kateri grafi imajo velik in kateri majhen indeks.
-n = 5 #stevilo vozlisc
-seznam = []
-sez_grafov = list(graphs(n, augment='vertices')) #seznam vseh moznih grafov z od 0 do n vozlisci
-sez_povezanih = []
-for g in sez_grafov:
-    if g.is_connected() == True: #upostevam samo povezane grafe      
-        sez_povezanih.append(g)
-for g in sez_povezanih:
-    if g.order() > 0: #narisem samo tiste z vsaj 1 vozliscem
-        plot(g)
-        vrednost = float(GGI(g))
-        print(vrednost)
-        seznam.append((g, vrednost))        
-        
-seznam.sort(key=lambda x: x[1]) #seznam uredim narascajoce po indeksu
-for i in range(1,4): #narisem si tri grafe z najmanjsim indeksom
-    g = seznam[i][0]
-    plot(g)
-    print(seznam[i][1])
+#definiram funkcijo, ki sprejme stevilo vozlisc (n) in tip grafa (obicajen povezan (op), brez trikotnikov (bt), drevo (dr), dvodelen (dv)) in vrne seznam 'tuplov', kjer je prvi element vsakega tupla graf ustreznega tipa na n vozliscih, drugi pa pripadajoc GGI. Seznam je urejen narascajoce po indeksu.
+#opomba: graf je tipa 'op', ce je povezan in ne ustreza nobenemu drugemu tipu
+def GGI_na_fiksnem_st_vozl(n, tip_grafa):
+    tipi = {'op', 'bt', 'dr', 'dv'}
+    if tip_grafa not in tipi:
+        raise ValueError("GGI_na_fiksnem_st_vozl: tip_grafa mora biti v %r." % tipi)
+    else:
+        vsi_grafi = list(graphs(n))
+        povezani_grafi = [graf for graf in vsi_grafi if graf.is_connected()]
+        seznam = [] #to bo seznam 'tuplov'
+        if tip_grafa == 'op':
+            for g in povezani_grafi:
+                if g.order() > 0: #narisem samo tiste z vsaj 1 vozliscem
+                    vrednost = float(GGI(g))
+                    seznam.append((g, vrednost))
+        elif tip_grafa == 'bt':
+            for g in povezani_grafi:
+                if vsebuje_trikotnik(g) == False and g.order() > 0: #upostevam samo tiste z vsaj 1 vozliscem
+                    vrednost = float(GGI(g))
+                    seznam.append((g, vrednost))
+        elif tip_grafa == 'dr':
+            tree_iterator = graphs.trees(n)
+            for g in tree_iterator:
+                vrednost = float(GGI(g))    
+                seznam.append((g, vrednost))
+        elif tip_grafa == 'dv':
+            for g in povezani_grafi:
+                if g.is_bipartite() and g.order() > 0:
+                    vrednost = float(GGI(g))
+                    seznam.append((g, vrednost))
+        seznam.sort(key=lambda x: x[1]) #uredim seznam tuplov
+        for tuple in seznam:
+            graf = tuple[0]
+            indeks = tuple[1]
+            show(plot(graf))
+            print(indeks)
+        return seznam    
     
-for tuple in seznam[-3:]: #narisem si tri grafe z najvecjim indeksom
-    g = tuple[0]
-    plot(g)
-    print(tuple[1])
+#GGI_na_fiksnem_st_vozl(7, 'op') pri n = 7 ze dobim error 'too many output messages' - od tu naprej bo treba uporabiti metahevristiko
+
+#2. del - simulirano ohlajanje
+
+#definiram parametre
+
+#a) sosednja stanja
+
+#funkcija neighbour doda oziroma odstrani nakljucno povezavo, oboje z verjetnostjo 0.5. Funkcija poskrbi, da je nov graf  se vedno povezan in da ne dodam povezave, kjer ta ze obstaja.
+def neighbour(G, tip_grafa):
+    tipi = {'op', 'bt', 'dr', 'dv'}
+    S = G.copy()
+    if tip_grafa not in tipi:
+        raise ValueError("GGI_na_fiksnem_st_vozl: tip_grafa mora biti v %r." % tipi)
+    else:
+        if tip_grafa == 'op':
+            if random.random() < 0.5: #v tem primeru naceloma odstranjujemo povezave, razen ce imamo drevo
+                if G.is_tree() == True: #ce imamo drevo, bo vsaka odstranjena povezana povzrocila nepovezan graf, zato v tem primeru povezavo dodamo 
+                    nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]    
+                    uv = random.choice(nepovezani_pari_vozl)
+                    S.add_edge(uv)
+                else: #sicer povezavo odstranimo
+                    random_edge = S.random_edge()
+                    S.delete_edge(random_edge)
+                    while S.is_connected == False:
+                        if random_edge not in S.edges():
+                            S.add_edge(random_edge)                       
+                        random_edge = S.random_edge()
+                        S.delete(random_edge)                           
+                return S               
+            else: #v tem primeru naceloma dodajamo povezave, razen ce imamo poln graf
+                nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
+                if len(nepovezani_pari_vozl) == 0: #v primeru polnega grafa odstranimo povezavo
+                    random_edge = S.random_edge()
+                    S.delete_edge(random_edge)
+                else: #sicer jo dodamo
+                    uv = random.choice(nepovezani_pari_vozl)
+                    S.add_edge(uv)    
+                return S
+        elif tip_grafa == 'dr':
+            nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]   
+            uv = random.choice(nepovezani_pari_vozl)
+            S.add_edge(uv) #dodam nakljucno povezavo, dobim cikel
+            #potem iz tega cikla odstranim nakljucno povezavo in to je nov graf
+        elif tip_grafa == 'dv':
+            if random.random() < 0.5: #v tem primeru naceloma odstranjujemo povezave, razen ce imamo drevo
+                if G.is_tree() == True: #ce imamo drevo, bo vsaka odstranjena povezana povzrocila nepovezan graf, zato v tem primeru povezavo dodamo 
+                    nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]    
+                    uv = random.choice(nepovezani_pari_vozl)
+                    S.add_edge(uv)
+                else: #sicer povezavo odstranimo
+                    random_edge = S.random_edge()
+                    S.delete_edge(random_edge)
+                    while S.is_connected == False:
+                        if random_edge not in S.edges():
+                            S.add_edge(random_edge)                       
+                        random_edge = S.random_edge()
+                        S.delete(random_edge)                           
+                return S                    
+         
+            
+#b) verjetnost sprejema                   
+def P(G_0, G_1, T):
+    e_0 = GGI(G_0)
+    e_1 = GGI(G_1)
+    if e_1 < e_0:
+        return 1
+    else:
+        rezultat = exp(-(e_1 - e_0) / T)
+        return rezultat
+    
+#c) temperaturna funkcija
+def T(k):
+    rezultat = (a * T_0) / log(1 + k)
+    return rezultat
+
+# funkcija simuliranega ohlajanja
+def simulirano_ohlajanje(G, k_max, a, T_0, tip_grafa):
+    G = G_0
+    for k in range(0, k_max):
+        G_1 = neigbour(G, tip_grafa)
+        if P(G_0, G_1, T) >= random.random():
+            G_0 = G_1
+    return G  
+
+B = ustvariGraf(3)
+dodajPovezave(B, [(0, 1), (1, 2), (1, 3), (2, 0)])
+B.plot()
 
 
 ︡d471d081-b59f-4595-ab16-f8787d263243︡{"file":{"filename":"/tmp/tmpb7ko6kzb/tmp_zy5rov5k.svg","show":true,"text":null,"uuid":"ee65591e-a60f-4f51-a801-fea37a6b5113"},"once":false}︡{"stdout":"3.53553390593274\n"}︡{"done":true}
