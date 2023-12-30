@@ -1,4 +1,5 @@
 ︠173b89ff-c7e7-48a8-b6ae-40a1770d3632s︠
+︠5cb6a965-0426-426a-b743-fff68a29072b︠
 import sage.all
 import math
 from sage.graphs.trees import TreeIterator
@@ -95,7 +96,7 @@ def GGI_na_fiksnem_st_vozl(n, tip_grafa):
 
 #a) sosednja stanja
 
-#funkcija neighbour doda oziroma odstrani nakljucno povezavo, oboje z verjetnostjo 0.5. Funkcija poskrbi, da je nov graf  se vedno povezan in da ne dodam povezave, kjer ta ze obstaja.
+#funkcija neighbour doda oziroma odstrani nakljucno povezavo. Funkcija poskrbi, da je nov graf se vedno povezan, istega tipa in da ne dodam povezave, kjer ta ze obstaja.
 def neighbour(G, tip_grafa):
     tipi = {'op', 'bt', 'dr', 'dv'}
     S = G.copy()
@@ -126,28 +127,91 @@ def neighbour(G, tip_grafa):
                     uv = random.choice(nepovezani_pari_vozl)
                     S.add_edge(uv)    
                 return S
-        elif tip_grafa == 'dr':
-            nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]   
-            uv = random.choice(nepovezani_pari_vozl)
-            S.add_edge(uv) #dodam nakljucno povezavo, dobim cikel
-            #potem iz tega cikla odstranim nakljucno povezavo in to je nov graf
+            
+            
+        elif tip_grafa == 'dr': 
+            random_edge = S.random_edge()
+            S.delete_edge(random_edge) #odstranim nakljucno povezavo, dobim dva locena grafa
+            locena_grafa = S.connected_components() #izmed teh dveh grafov izberem dve nakljucni vozljisci in ju povezem
+            u = random.choice(locena_grafa[0])
+            v = random.choice(locena_grafa[1])
+            S.add_edge(u, v)
+            return S
+        
+        
         elif tip_grafa == 'dv':
-            if random.random() < 0.5: #v tem primeru naceloma odstranjujemo povezave, razen ce imamo drevo
-                if G.is_tree() == True: #ce imamo drevo, bo vsaka odstranjena povezana povzrocila nepovezan graf, zato v tem primeru povezavo dodamo 
-                    nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]    
+            S = BipartiteGraph(S)
+            sez_seznamov_vozl = []
+            sez_mnozic_vozl = S.bipartition()
+            for mnoz in sez_mnozic_vozl: #ustvarim seznam dveh seznamov, da potem do njiju lahko dostopam
+                sez_seznamov_vozl.append(sorted(mnoz))
+                
+            g_0 = S
+            #naredim g_0 in g_1 kot dva mozna grafa, na katerih iscem sosede. razlikujeta se v mnozici 
+            
+#           if len(sez_seznamov_vozl[0]) == 1:
+
+            if random.random() < 0.5: #dodam povezavo, ce graf se ni poln (v dvodelnem smislu)
+                if len(S.edges()) == len(sez_seznamov_vozl[0]) * len(sez_seznamov_vozl[1]): #test za polnost dvodelnega grafa
+                    random_edge = S.random_edge() #v tem primeru odstranim povezavo
+                    S.delete_edge(random_edge)
+                else: #sicer jo dodam in pazim, da ne dodam povezave, ki ze obstaja
+                    nepovezani_pari_vozl = [(u, v) for u in sez_seznamov_vozl[0] for v in sez_seznamov_vozl[1] if not S.has_edge(u, v)]    
                     uv = random.choice(nepovezani_pari_vozl)
                     S.add_edge(uv)
-                else: #sicer povezavo odstranimo
+            
+            else: #odstranim povezavo in poskrbim, da je graf se vedno povezan
+                if S.is_tree() == True: #v tem primeru ne morem nobene povezave odstraniti, zato jo dodam
+                    u = random.choice(sez_seznamov_vozl[0])
+                    v = random.choice(sez_seznamov_vozl[1])
+                    S.add_edge(u, v)
+                else: #sicer povezavo odstranim
                     random_edge = S.random_edge()
                     S.delete_edge(random_edge)
-                    while S.is_connected == False:
+                    while S.is_connected() == False:
                         if random_edge not in S.edges():
                             S.add_edge(random_edge)                       
                         random_edge = S.random_edge()
-                        S.delete(random_edge)                           
-                return S                    
-         
-            
+                        S.delete_edge(random_edge) 
+            return S
+        
+        
+        elif tip_grafa == 'bt':
+            if random.random() < 0.5: #v tem primeru naceloma odstranjujemo povezave, razen ce imamo drevo
+                if S.is_tree() == True: 
+                    nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]    
+                    uv = random.choice(nepovezani_pari_vozl)
+                    S.add_edge(uv)
+                    while vsebuje_trikotnik(S) == True or S.is_connected() == False:
+                        if random.random() < 0.5:
+                            nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]    
+                            uv = random.choice(nepovezani_pari_vozl)
+                            S.add_edge(uv)
+                        else:
+                            random_edge = S.random_edge()       
+                            S.delete_edge(random_edge)
+                else:
+                    random_edge = S.random_edge()
+                    while S.is_cut_edge(random_edge) == True:                   
+                        random_edge = S.random_edge()
+                    S.delete_edge(random_edge)
+                    
+            else: #sicer povezavo dodamo
+                nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]    
+                uv = random.choice(nepovezani_pari_vozl)
+                S.add_edge(uv)
+                while vsebuje_trikotnik(S) == True or S.is_connected() == False:                    
+                    if random.random() < 0.5:
+                        nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]    
+                        uv = random.choice(nepovezani_pari_vozl)
+                        S.add_edge(uv)
+                    else:
+                        random_edge = S.random_edge()       
+                        S.delete_edge(random_edge)                
+
+            return S            
+        
+                
 #b) verjetnost sprejema                   
 def P(G_0, G_1, T):
     e_0 = GGI(G_0)
@@ -172,9 +236,12 @@ def simulirano_ohlajanje(G, k_max, a, T_0, tip_grafa):
             G_0 = G_1
     return G  
 
-B = ustvariGraf(3)
-dodajPovezave(B, [(0, 1), (1, 2), (1, 3), (2, 0)])
-B.plot()
+G = ustvariGraf(5)
+dodajPovezave(G, [(0, 1), (1, 2), (3, 1), (4,2), (0, 4), (4, 5)])
+G.plot()
+s = neighbour(G, 'bt')
+
+s.plot()
 
 
 ︡d471d081-b59f-4595-ab16-f8787d263243︡{"file":{"filename":"/tmp/tmpb7ko6kzb/tmp_zy5rov5k.svg","show":true,"text":null,"uuid":"ee65591e-a60f-4f51-a801-fea37a6b5113"},"once":false}︡{"stdout":"3.53553390593274\n"}︡{"done":true}
