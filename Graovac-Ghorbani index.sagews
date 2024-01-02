@@ -204,57 +204,64 @@ def neighbour(G, tip_grafa):
             if random.random() < 0.5: #v tem primeru naceloma odstranjujemo povezave, razen ce imamo drevo
                 if S.is_tree() == True:
                     nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                    uv = random.choice(nepovezani_pari_vozl)
-                    S.add_edge(uv)
-                    while vsebuje_trikotnik(S) == True or S.is_connected() == False:
+                    if len(nepovezani_pari_vozl) > 0:
+                        uv = random.choice(nepovezani_pari_vozl)
+                        S.add_edge(uv)
+                    while vsebuje_trikotnik(S) == True or S.is_connected() == False: #te while zanke se niso najboljse
                         if random.random() < 0.5:
                             nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                            uv = random.choice(nepovezani_pari_vozl)
-                            S.add_edge(uv)
+                            if len(nepovezani_pari_vozl) > 0:
+                                uv = random.choice(nepovezani_pari_vozl)
+                                S.add_edge(uv)
                         else:
-                            random_edge = S.random_edge()
-                            S.delete_edge(random_edge)
+                            if len(S.edges()) > 0:
+                                random_edge = S.random_edge()
+                                S.delete_edge(random_edge)
                 else:
-                    random_edge = S.random_edge()
-                    while S.is_cut_edge(random_edge) == True:
+                    if len(S.edges()) > 0:
                         random_edge = S.random_edge()
-                    S.delete_edge(random_edge)
+                        while S.is_cut_edge(random_edge) == True:
+                            random_edge = S.random_edge()
+                        S.delete_edge(random_edge)
 
             else: #sicer povezavo dodamo
                 nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                uv = random.choice(nepovezani_pari_vozl)
-                S.add_edge(uv)
+                if len(nepovezani_pari_vozl) > 0:
+                    uv = random.choice(nepovezani_pari_vozl)
+                    S.add_edge(uv)
                 while vsebuje_trikotnik(S) == True or S.is_connected() == False:
                     if random.random() < 0.5:
                         nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                        uv = random.choice(nepovezani_pari_vozl)
-                        S.add_edge(uv)
+                        if len(nepovezani_pari_vozl) > 0:
+                            uv = random.choice(nepovezani_pari_vozl)
+                            S.add_edge(uv)
                     else:
-                        random_edge = S.random_edge()
-                        S.delete_edge(random_edge)
+                        if len(S.edges()) > 0:
+                            random_edge = S.random_edge()
+                            S.delete_edge(random_edge)
 
             return S
 
 
 #b) verjetnost sprejema
-def P(G_0, G_1, T):
-    e_0 = GGI(G_0)
+def P(G, G_1, T):
+    e = GGI(G)
     e_1 = GGI(G_1)
-    if e_1 < e_0:
+    if e_1 < e:
         return 1
     else:
-        rezultat = exp(-(e_1 - e_0) / T)
+        rezultat = exp(-(e_1 - e) / T)
         return rezultat
 
 #c) temperaturna funkcija
-def temperatura(k, a, T_0):
-    rezultat = (a * T_0) / log(1 + k)
+def temperatura(T, a):
+    rezultat = a * T
     return rezultat
 
 
 
 # funkcija simuliranega ohlajanja
-def simulirano_ohlajanje(G_0, k_max, a, T_0, tip_grafa):
+def simulirano_ohlajanje(G_0, k_max, T_0, tip_grafa):
     sez_tuplov_k_temp = [] #naredim nekaj pomoznih seznamov, da si bom lahko plotala delovanje algoritma
     sez_tuplov_k_ggi = []
     sez_ggi = []
@@ -263,13 +270,14 @@ def simulirano_ohlajanje(G_0, k_max, a, T_0, tip_grafa):
     G = G_0 
     T = T_0
     for k in range(k_max): 
-        T = 0.98*T   # to funkcijo temperatura moram se razmisliti, to je samo en mozen primer
+        T = temperatura(T, 0.99)  # to funkcijo temperatura moram se razmisliti, to je samo en mozen primer
         G_1 = neighbour(G, tip_grafa)
         p =  random.random()
-        verjetnost_prehoda = P(G_0, G_1, T)
+        verjetnost_prehoda = P(G, G_1, T)
         if verjetnost_prehoda >= p:
             G = G_1
-            
+        #show(G.plot())
+        #print(len(G.edges()))
         sez_tuplov_k_temp.append((k, T)) #na pomozne sezname dodam vrednosti
         sez_tuplov_k_ggi.append((k, GGI(G)))
         sez_ggi.append(GGI(G))
@@ -293,14 +301,14 @@ def simulirano_ohlajanje(G_0, k_max, a, T_0, tip_grafa):
 #G = ustvariGraf(10)
 #dodajPovezave(G, [(3, 1), (2, 3), (4, 3), (5, 1),(5, 8), (0, 9),(2, 7), (5, 0), (6, 2)])
 #G.plot()
-F = graphs.RandomBipartite(5, 3, 0.5) 
-while not F.is_connected():
-    F = graphs.RandomBipartite(5, 3, 0.5)
-F = BipartiteGraph(F)
-F.plot()
-#g = simulirano_ohlajanje(F, 200, 1, 1000, 'dv')
-s = neighbour(F, 'dv')
-s.plot()
+F = graphs.RandomTree(25)
+#while not F.is_connected():
+#    F = graphs.RandomBipartite(16, 10, 0.5)
+
+#F.plot()
+g = simulirano_ohlajanje(F, 1500, 1200, 'bt')
+#s = neighbour(F, 'bt')
+#s.plot()
 
 ︡d471d081-b59f-4595-ab16-f8787d263243︡{"file":{"filename":"/tmp/tmpb7ko6kzb/tmp_zy5rov5k.svg","show":true,"text":null,"uuid":"ee65591e-a60f-4f51-a801-fea37a6b5113"},"once":false}︡{"stdout":"3.53553390593274\n"}︡{"done":true}
 ︠7d24e49f-5dee-4851-a879-575bddd12fbb︠
