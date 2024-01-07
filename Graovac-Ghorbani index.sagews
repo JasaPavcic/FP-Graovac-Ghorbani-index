@@ -1,8 +1,4 @@
-︠173b89ff-c7e7-48a8-b6ae-40a1770d3632s︠
-︠5cb6a965-0426-426a-b743-fff68a29072b︠
-︠01528129-53de-4383-b4b5-9288ffb4d076︠
-
-︠01528129-53de-4383-b4b5-9288ffb4d076s︠
+︠9453b773-46ba-4e24-b830-00e1714a1075s︠
 import sage.all
 import numpy
 import math
@@ -83,6 +79,23 @@ def GGI_na_fiksnem_st_vozl(n, tip_grafa):
 
 #funkcija neighbour doda oziroma odstrani nakljucno povezavo. Funkcija poskrbi, da je nov graf se vedno povezan, istega tipa in da ne dodam povezave, kjer ta ze obstaja.
 def neighbour(G, tip_grafa):
+
+    def dodaj_random_povezavo():
+        nonlocal S
+        nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
+        if nepovezani_pari_vozl:
+            uv = random.choice(nepovezani_pari_vozl)
+            S.add_edge(uv)
+
+    def odstrani_random_povezavo():
+        nonlocal S
+        if S.edges():
+            random_edge = S.random_edge()
+            while S.is_cut_edge(random_edge):
+                random_edge = S.random_edge()
+            S.delete_edge(random_edge)
+
+
     tipi = {'op', 'bt', 'dr', 'dv'}
     S = G.copy()
     if tip_grafa not in tipi:
@@ -90,23 +103,12 @@ def neighbour(G, tip_grafa):
     else:
         if tip_grafa == 'op':
             if random.random() < 0.5: #v tem primeru naceloma odstranjujemo povezave, razen ce imamo drevo
-                if G.is_tree() == True: #ce imamo drevo, bo vsaka odstranjena povezana povzrocila nepovezan graf, zato v tem primeru povezavo dodamo
-                    nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                    uv = random.choice(nepovezani_pari_vozl)
-                    S.add_edge(uv)
+                if G.is_tree(): #ce imamo drevo, bo vsaka odstranjena povezana povzrocila nepovezan graf, zato v tem primeru povezavo dodamo
+                    dodaj_random_povezavo()
                 else: #sicer povezavo odstranimo
-                    random_edge = S.random_edge()
-                    while S.is_cut_edge(random_edge) == True:
-                        random_edge = S.random_edge()
-                    S.delete_edge(random_edge)
+                    odstrani_random_povezavo
             else: #v tem primeru naceloma dodajamo povezave, razen ce imamo poln graf
-                nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                if len(nepovezani_pari_vozl) == 0: #v primeru polnega grafa odstranimo povezavo
-                    random_edge = S.random_edge()
-                    S.delete_edge(random_edge)
-                else: #sicer jo dodamo
-                    uv = random.choice(nepovezani_pari_vozl)
-                    S.add_edge(uv)
+                dodaj_random_povezavo() if len(S.edges()) < len(S.vertices()) * (len(S.vertices()) - 1) else odstrani_random_povezavo()
             return S
 
         elif tip_grafa == 'dr':
@@ -135,7 +137,8 @@ def neighbour(G, tip_grafa):
                 u = random.choice(list(S.left))
                 S.add_edge(vozl, u)
             else: #sicer ali dodamo/odstranimo povezavo, ali spremenimo mnozici vozlisc
-                if random.random() < 0.25: #iz leve prestavim na desno eno vozlisce
+                r = random.random()
+                if r < 0.25: #iz leve prestavim na desno eno vozlisce
                     vozl = random.choice(list(S.left))
                     S.delete_vertex(vozl)
                     S.right.add(vozl)
@@ -147,7 +150,7 @@ def neighbour(G, tip_grafa):
                             if S.degree(vozl) == 0:
                                 levo_vozl = random.choice(list(S.left))
                                 S.add_edge(levo_vozl, vozl)
-                elif 0.25 <= random.random() < 0.5: #iz desne prestavim na levo eno vozlisce
+                elif 0.25 <= r < 0.5: #iz desne prestavim na levo eno vozlisce
                     vozl = random.choice(list(S.right))
                     S.delete_vertex(vozl)
                     S.left.add(vozl)
@@ -159,7 +162,7 @@ def neighbour(G, tip_grafa):
                             if S.degree(vozl) == 0:
                                 desno_vozl = random.choice(list(S.right))
                                 S.add_edge(desno_vozl, vozl)
-                elif 0.5 <= random.random() < 0.75: #dodam povezavo, ce graf se ni poln (v dvodelnem smislu)
+                elif 0.5 <= r < 0.75: #dodam povezavo, ce graf se ni poln (v dvodelnem smislu)
                     if len(S.edges()) == len(S.left) * len(S.right): #test za polnost dvodelnega grafa
                         random_edge = S.random_edge() #v tem primeru odstranim povezavo
                         S.delete_edge(random_edge)
@@ -182,28 +185,18 @@ def neighbour(G, tip_grafa):
 
         elif tip_grafa == 'bt':
             if random.random() < 0.5: #v tem primeru najprej dodamo random povezavo in potem 'popravljamo', dokler graf ni ustrezne oblike
-                nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                uv = random.choice(nepovezani_pari_vozl)
-                S.add_edge(uv)
-                while vsebuje_trikotnik(S) == True or S.is_connected() == False:
+                dodaj_random_povezavo()
+                while vsebuje_trikotnik(S) or not  S.is_connected():
                     if random.random() < 0.5:
-                        nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                        if len(nepovezani_pari_vozl) > 0:
-                            uv = random.choice(nepovezani_pari_vozl)
-                            S.add_edge(uv)
+                        dodaj_random_povezavo()
                     else:
-                        if len(S.edges()) > 0:
-                            random_edge = S.random_edge()
-                            S.delete_edge(random_edge)
+                        odstrani_random_povezavo()
             else: #v tem primeru najprej odstranimo random povezavo in potem 'popravljamo', dokler graf ni ustrezne oblike
                 random_edge = S.random_edge()
                 S.delete_edge(random_edge)
-                while vsebuje_trikotnik(S) == True or S.is_connected() == False:
+                while vsebuje_trikotnik(S) or not S.is_connected():
                     if random.random() < 0.5:
-                        nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
-                        if len(nepovezani_pari_vozl) > 0:
-                            uv = random.choice(nepovezani_pari_vozl)
-                            S.add_edge(uv)
+                        dodaj_random_povezavo()
                     else:
                         if len(S.edges()) > 0:
                             random_edge = S.random_edge()
@@ -232,8 +225,8 @@ def P(G, G_1, T, kaj_iscem):
 
 
 #c) temperaturna funkcija
-def temperatura(T, a):
-    rezultat = a * T
+def temperatura(T, a, k):
+    rezultat = T * exp(-a * k)
     return rezultat
 
 
@@ -251,7 +244,7 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
         G = G_0
         T = T_0
         for k in range(k_max):
-            T = temperatura(T, a)  # to funkcijo temperatura moram se razmisliti, to je samo en mozen primer
+            T = temperatura(T_0, a, k)  # to funkcijo temperatura moram se razmisliti, to je samo en mozen primer
             G_1 = neighbour(G, tip_grafa)
             p =  random.random()
             verjetnost_prehoda = P(G, G_1, T, kaj_iscem)
@@ -282,20 +275,19 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
 
 
 G = ustvariGraf(10)
-dodajPovezave(G, [(3, 1), (2, 3),(5, 8), (0, 9),(2, 7), (5, 0), (6, 2)])
+
 #G.plot()
 F = graphs.RandomTree(15)
 #while not F.is_connected():
 #    F = graphs.RandomBipartite(16, 10, 0.5)
 
 F.plot()
-#g = simulirano_ohlajanje(F, 500, 1000, 0.96, 'bt', 'max')
+g = simulirano_ohlajanje(F, 200, 100000, 0.96, 'bt', 'max')
+#G.plot()
 #s = neighbour(F, 'bt')
 #s.plot()
-l = GGI_na_fiksnem_st_vozl(6, 'bt')
-
-︡d471d081-b59f-4595-ab16-f8787d263243︡{"file":{"filename":"/tmp/tmpb7ko6kzb/tmp_zy5rov5k.svg","show":true,"text":null,"uuid":"ee65591e-a60f-4f51-a801-fea37a6b5113"},"once":false}︡{"stdout":"3.53553390593274\n"}︡{"done":true}
-︠7d24e49f-5dee-4851-a879-575bddd12fbb︠
+#l = GGI_na_fiksnem_st_vozl(6, 'bt')
+︡470bff90-4d61-4124-bf27-8e98564f8c6c︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_x90sd068.svg","show":true,"text":null,"uuid":"d4a534b4-577c-45a3-b822-2beee7c765f7"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_xy5dzf1v.svg","show":true,"text":null,"uuid":"687978bc-ed96-4e3a-80ac-ac3f4fd6e83f"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_quarh8vv.svg","show":true,"text":null,"uuid":"a70eb50f-e289-4596-a03e-59130ad78fe0"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_jy3f2i81.svg","show":true,"text":null,"uuid":"893b6700-3a8c-42dc-8378-78073ccc60ad"},"once":false}︡{"done":true}
 
 
 
