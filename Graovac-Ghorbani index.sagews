@@ -95,6 +95,14 @@ def neighbour(G, tip_grafa):
                 random_edge = S.random_edge()
             S.delete_edge(random_edge)
 
+    def povezi():
+        while not S.is_connected():
+            if random.random() < 0.5:
+                add_random_edge()
+            else:
+                remove_random_edge()
+
+
 
     tipi = {'op', 'bt', 'dr', 'dv'}
     S = G.copy()
@@ -143,25 +151,13 @@ def neighbour(G, tip_grafa):
                     S.delete_vertex(vozl)
                     S.right.add(vozl)
                     S.add_vertex(vozl, right=True)
-                    while S.is_connected() == False:
-                        u = random.choice(list(S.left))
-                        S.add_edge(vozl, u)
-                        for vozl in S.right:
-                            if S.degree(vozl) == 0:
-                                levo_vozl = random.choice(list(S.left))
-                                S.add_edge(levo_vozl, vozl)
+                    povezi()
                 elif 0.25 <= r < 0.5: #iz desne prestavim na levo eno vozlisce
                     vozl = random.choice(list(S.right))
                     S.delete_vertex(vozl)
                     S.left.add(vozl)
                     S.add_vertex(vozl, left = True)
-                    while S.is_connected() == False:
-                        v = random.choice(list(S.right))
-                        S.add_edge(vozl, v)
-                        for vozl in S.left:
-                            if S.degree(vozl) == 0:
-                                desno_vozl = random.choice(list(S.right))
-                                S.add_edge(desno_vozl, vozl)
+                    povezi()
                 elif 0.5 <= r < 0.75: #dodam povezavo, ce graf se ni poln (v dvodelnem smislu)
                     if len(S.edges()) == len(S.left) * len(S.right): #test za polnost dvodelnega grafa
                         random_edge = S.random_edge() #v tem primeru odstranim povezavo
@@ -282,12 +278,12 @@ F = graphs.RandomTree(15)
 #    F = graphs.RandomBipartite(16, 10, 0.5)
 
 F.plot()
-g = simulirano_ohlajanje(F, 200, 100000, 0.96, 'bt', 'max')
+g = simulirano_ohlajanje(F, 25, 1000, 0.96, 'bt', 'max')
 #G.plot()
 #s = neighbour(F, 'bt')
 #s.plot()
 #l = GGI_na_fiksnem_st_vozl(6, 'bt')
-︡470bff90-4d61-4124-bf27-8e98564f8c6c︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_x90sd068.svg","show":true,"text":null,"uuid":"d4a534b4-577c-45a3-b822-2beee7c765f7"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_xy5dzf1v.svg","show":true,"text":null,"uuid":"687978bc-ed96-4e3a-80ac-ac3f4fd6e83f"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_quarh8vv.svg","show":true,"text":null,"uuid":"a70eb50f-e289-4596-a03e-59130ad78fe0"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_jy3f2i81.svg","show":true,"text":null,"uuid":"893b6700-3a8c-42dc-8378-78073ccc60ad"},"once":false}︡{"done":true}
+︡ffa7eeca-379b-4490-8a3d-ac5c67d68f23︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_e48cws7s.svg","show":true,"text":null,"uuid":"333a9c3e-c4ba-4ed6-b386-c4e031522ca4"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_etobskm0.svg","show":true,"text":null,"uuid":"836f301a-9753-4179-8457-44a966a7e60d"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_lf1mrfab.svg","show":true,"text":null,"uuid":"1950063f-de91-4655-b63e-b0bd988d8a57"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_vu0xn0as.svg","show":true,"text":null,"uuid":"8fd685c1-28f7-42a8-9cb6-e1fce3fa3155"},"once":false}︡{"done":true}
 
 
 
