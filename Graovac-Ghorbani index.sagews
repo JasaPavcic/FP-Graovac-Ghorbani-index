@@ -1,10 +1,12 @@
-︠9453b773-46ba-4e24-b830-00e1714a1075s︠
+︠9453b773-46ba-4e24-b830-00e1714a1075︠
 import sage.all
 import numpy
 import math
 from sage.graphs.trees import TreeIterator
 import random
 from sage.plot.plot import list_plot
+import itertools
+import pandas as pd
 
 def ustvariGraf(n):
     G = Graph()
@@ -270,20 +272,58 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
 
 
 
-G = ustvariGraf(10)
+#G = ustvariGraf(10)
 
 #G.plot()
-F = graphs.RandomTree(15)
+
 #while not F.is_connected():
 #    F = graphs.RandomBipartite(16, 10, 0.5)
 
-F.plot()
-g = simulirano_ohlajanje(F, 25, 1000, 0.96, 'bt', 'max')
+#F.plot()
+#g = simulirano_ohlajanje(F, 25, 1000, 0.96, 'bt', 'max')
 #G.plot()
 #s = neighbour(F, 'bt')
 #s.plot()
 #l = GGI_na_fiksnem_st_vozl(6, 'bt')
-︡ffa7eeca-379b-4490-8a3d-ac5c67d68f23︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_e48cws7s.svg","show":true,"text":null,"uuid":"333a9c3e-c4ba-4ed6-b386-c4e031522ca4"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_etobskm0.svg","show":true,"text":null,"uuid":"836f301a-9753-4179-8457-44a966a7e60d"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_lf1mrfab.svg","show":true,"text":null,"uuid":"1950063f-de91-4655-b63e-b0bd988d8a57"},"once":false}︡{"file":{"filename":"/tmp/tmphn2c9orq/tmp_vu0xn0as.svg","show":true,"text":null,"uuid":"8fd685c1-28f7-42a8-9cb6-e1fce3fa3155"},"once":false}︡{"done":true}
+
+#F = graphs.RandomTree(15)
+
+
+
+#mozni parametri
+k_max_vrednosti = [25, 50, 100]
+T_0_vrednosti = [500, 1000, 2000,5000,10000]
+a_vrednosti = [0.95, 0.96, 0.97, 0.99]
+tip_grafa_vrednosti = ['op', 'bt', 'dr', 'dv']
+kaj_iscem_vrednosti = ['min', 'max']
+
+#ustvari kombinacije
+mozne_kombinacije = list(itertools.product(k_max_vrednosti, T_0_vrednosti, a_vrednosti, tip_grafa_vrednosti, kaj_iscem_vrednosti))
+
+#lepsi format
+mozne_kombinacije = [{'k_max': k_max, 'T_0': T_0, 'a': a, 'tip_grafa': tip_grafa, 'kaj_iscem': kaj_iscem} for
+                  (k_max, T_0, a, tip_grafa, kaj_iscem) in mozne_kombinacije]
+
+#tabela rezultatov
+rezultati_df = pd.DataFrame(columns=['k_max', 'T_0', 'a', 'tip_grafa', 'kaj_iscem', 'Final GGI'])
+
+#simulacija nekak treba nardit, da ne generira samo dreves
+for n in range(1,11):
+    for mozna_kombinacija in mozne_kombinacije:
+        F = graphs.RandomTree(n)
+        G = simulirano_ohlajanje(F, mozna_kombinacija['k_max'], mozna_kombinacija['T_0'], mozna_kombinacija['a'], mozna_kombinacija['tip_grafa'], mozna_kombinacija['kaj_iscem'])
+        GGI = GGI(G)
+        rezultati_df = rezultati_df.append({'k_max': mozna_kombinacija['k_max'],
+                                        'T_0': mozna_kombinacija['T_0'],
+                                        'a': mozna_kombinacija['a'],
+                                        'tip_grafa': mozna_kombinacija['tip_grafa'],
+                                        'kaj_iscem': mozna_kombinacija['kaj_iscem'],
+                                        'Final GGI': GGI,
+                                           'st_vozlisc': n }, ignore_index=True)
+
+print(rezultati_df)
+
+#treba se obdelat podatke
 
 
 
