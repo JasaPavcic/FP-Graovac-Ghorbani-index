@@ -1,4 +1,4 @@
-︠9453b773-46ba-4e24-b830-00e1714a1075s︠
+︠9453b773-46ba-4e24-b830-00e1714a1075︠
 import sage.all
 import numpy
 import math
@@ -8,11 +8,14 @@ from sage.plot.plot import list_plot
 import itertools
 import pandas as pd
 
+
+#ustvari graf na n vozliščih
 def ustvariGraf(n):
     G = Graph()
     G.add_vertices(range(n))
     return G
 
+#funkcija za izračun Graova-Ghorbani indexa
 def GGI(G):
     n = G.order() #stevilo ogljisc v grafu
     vsota = 0
@@ -20,8 +23,8 @@ def GGI(G):
     for (u, v,_) in G.edges():
         nu_v = sum(1 for x in G.vertices() if G.shortest_path_length(u, x) < G.shortest_path_length(v, x))
         nv_u = sum(1 for x in G.vertices() if G.shortest_path_length(v, x) < G.shortest_path_length(u, x))
-        if nu_v + nv_u - 2 > 0:
-            vsota += sqrt((nu_v + nv_u - 2) / (nu_v * nv_u))
+        if nu_v + nv_u - 2 > 0 and nu_v * nv_u != 0 :
+            vsota += math.sqrt((nu_v + nv_u - 2) / (nu_v * nv_u))
 
     return vsota
 
@@ -81,7 +84,7 @@ def GGI_na_fiksnem_st_vozl(n, tip_grafa):
 
 #funkcija neighbour doda oziroma odstrani nakljucno povezavo. Funkcija poskrbi, da je nov graf se vedno povezan, istega tipa in da ne dodam povezave, kjer ta ze obstaja.
 def neighbour(G, tip_grafa):
-
+    S = G.copy()
     def dodaj_random_povezavo():
         nonlocal S
         nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
@@ -107,7 +110,7 @@ def neighbour(G, tip_grafa):
 
 
     tipi = {'op', 'bt', 'dr', 'dv'}
-    S = G.copy()
+
     if tip_grafa not in tipi:
         raise ValueError("GGI_na_fiksnem_st_vozl: tip_grafa mora biti v %r." % tipi)
     else:
@@ -176,7 +179,7 @@ def neighbour(G, tip_grafa):
                         S.add_edge(u, v)
                     else: #sicer povezavo odstranim
                         random_edge = S.random_edge()
-                        while S.is_cut_edge(random_edge) == True:
+                        while S.is_cut_edge(random_edge):
                             random_edge = S.random_edge()
                         S.delete_edge(random_edge)
             return S
@@ -204,7 +207,7 @@ def neighbour(G, tip_grafa):
 
 
 #b) verjetnost prehoda; razlikuje se glede na to, ali iscemo min ali max
-def verjetnost(G, G_1, T, kaj_iscem):
+def moznost(G, G_1, T, kaj_iscem):
     iscem = {'min', 'max'}
     if kaj_iscem not in iscem:
         raise ValueError("simulirano_ohlajanje: kaj_iscem mora biti v %r." % iscem)
@@ -218,14 +221,14 @@ def verjetnost(G, G_1, T, kaj_iscem):
         if e_1 < e:
             return 1
         else:
-            rezultat = exp(-(e_1 - e) / T)
-            return float(rezultat)
+            rezultat = math.exp(-(e_1 - e) / T)
+            return rezultat
 
 
 #c) temperaturna funkcija
-def temperatura(T, a, k):
-    rezultat = T * exp(-a * k)
-    return rezultat
+def temperatura(T, a, l):
+    stopinje = T * math.exp(-a * l)
+    return stopinje
 
 
 # funkcija simuliranega ohlajanja sprejme zacetni graf (G_0), najvecje stevilo korakov (k_max), zacetno temperaturo (T_0), parameter ohlajanja (a), tip grafa (tip_grafa) in podatek o tem, a iscem minimum ali maksimum (kaj_iscem): ce iscem minimum vstavim 'min', ce maksimum pa 'max'
@@ -241,18 +244,21 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
         sez_verjetnosti = []
         G = G_0
         T = T_0
+        prehod = 0
         for k in range(k_max):
             T = temperatura(T_0, a, k)  # to funkcijo temperatura moram se razmisliti, to je samo en mozen primer
             G_1 = neighbour(G, tip_grafa)
-            verjetnost_prehoda = verjetnost(G, G_1, T, kaj_iscem)
-            p =  random.random()
-            if verjetnost_prehoda >= p:
+            print(prehod)
+            prehod = moznost(G, G_1, T, kaj_iscem)
+            print(prehod)
+            v =  random.random()
+            if prehod >= v:
                 G = G_1
 
             sez_tuplov_k_temp.append((k, T)) #na pomozne sezname dodam vrednosti
             sez_tuplov_k_ggi.append((k, GGI(G)))
             sez_ggi.append(GGI(G))
-            sez_verjetnosti.append((k, verjetnost_prehoda))
+            sez_verjetnosti.append((k, prehod))
 
         p = list_plot(sez_tuplov_k_temp, title = 'T(k)', plotjoined = True) #narisem podatke, ki mi bodo v pomoc
         p.show()
@@ -271,16 +277,9 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
         return G
 
 
-
-#G = ustvariGraf(10)
-
-#G.plot()
-
 #while not F.is_connected():
 #    F = graphs.RandomBipartite(16, 10, 0.5)
 
-#F.plot()
-#O = graphs.RandomTree(5)
 #g = simulirano_ohlajanje(O, 5, 1000, 0.96, 'bt', 'max')
 #g.plot()
 #l = GGI_na_fiksnem_st_vozl(6, 'bt')
@@ -288,6 +287,9 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
 #F = graphs.RandomTree(15)
 
 
+
+
+#3. del - eksperimentiranje
 
 ###mozni parametri
 k_max_vrednosti = [25, 50, 100]
@@ -309,17 +311,15 @@ rezultati_df = pd.DataFrame(columns=['k_max', 'T_0', 'a', 'tip_grafa', 'kaj_isce
 
 
 
-
-
 ####simulacija (nekak treba nardit, da ne generira samo dreves)
-for n in range(5,11):
+for n in range(5,6):
     print('število vozlišč:',n)
     F = graphs.RandomTree(n)
     for mozna_kombinacija in mozne_kombinacije:
         print(mozna_kombinacija)
         G = simulirano_ohlajanje(F, mozna_kombinacija['k_max'], mozna_kombinacija['T_0'], mozna_kombinacija['a'], mozna_kombinacija['tip_grafa'], mozna_kombinacija['kaj_iscem'])
         G.plot()
-        GGI = float(GGI(G))
+        GGI = GGI(G)
         print('kočni GGI:',GGI)
         nova_vrstica = [mozna_kombinacija['k_max'],
                         mozna_kombinacija['T_0'],
@@ -335,7 +335,7 @@ for n in range(5,11):
 print(rezultati_df)
 
 #treba se obdelat podatke
-︡9544864b-0827-42db-b9d4-74b8ed2615c0︡{"stdout":"število vozlišč: 5\n{'k_max': 25, 'T_0': 500, 'a': 0.950000000000000, 'tip_grafa': 'op', 'kaj_iscem': 'min'}\n"}︡{"file":{"filename":"/tmp/tmpywpz4lzj/tmp_p9tj_umk.svg","show":true,"text":null,"uuid":"ffd5f420-fd07-448a-9c5c-4ea5cf99c80a"},"once":false}︡{"file":{"filename":"/tmp/tmpywpz4lzj/tmp_df6ix7at.svg","show":true,"text":null,"uuid":"8f765806-d5fc-4b76-a654-0d203d9c116d"},"once":false}︡{"file":{"filename":"/tmp/tmpywpz4lzj/tmp_7vv_4kta.svg","show":true,"text":null,"uuid":"91109bc3-a4ea-4f07-ad9f-63692f9e6cc9"},"once":false}︡{"file":{"filename":"/tmp/tmpywpz4lzj/tmp__wd1f4e_.svg","show":true,"text":null,"uuid":"0edd9ce3-0153-4d85-aa5d-8fca39812114"},"once":false}︡{"stdout":"kočni GGI:"}︡{"stdout":" 3.1462643699419726\nnova vrstica\n  k_max  T_0                  a tip_grafa kaj_iscem  Koncni GGI  st_vozlisc\n0    25  500  0.950000000000000        op       min    3.146264           5\n{'k_max': 25, 'T_0': 500, 'a': 0.950000000000000, 'tip_grafa': 'op', 'kaj_iscem': 'max'}\n"}︡{"stderr":"Error in lines 236-254\n"}︡{"stderr":"Traceback (most recent call last):\n  File \"/cocalc/lib/python3.11/site-packages/smc_sagews/sage_server.py\", line 1244, in execute\n    exec(\n  File \"\", line 6, in <module>\n  File \"\", line 15, in simulirano_ohlajanje\n  File \"\", line 10, in verjetnost\nTypeError: 'float' object is not callable\n"}︡{"done":true}
+︡b604d2bf-ebae-4be8-84df-7ceea29a0a44︡{"stdout":"število vozlišč: 5\n{'k_max': 25, 'T_0': 500, 'a': 0.950000000000000, 'tip_grafa': 'op', 'kaj_iscem': 'min'}\n0\n0.998904224483749\n0.998904224483749\n1\n1\n0.9991998719279944\n0.9991998719279944\n0.9575258794668249\n0.9575258794668249\n0.9521722553848516\n0.9521722553848516\n1\n1\n1\n1\n0.2014919968379291\n0.2014919968379291\n1\n1\n0.003466162549028181\n0.003466162549028181\n4.352748788604278e-07\n4.352748788604278e-07\n3.561964640487387e-17\n3.561964640487387e-17\n1.3801435607449119e-55\n1.3801435607449119e-55\n1.0674141065222018e-110\n1.0674141065222018e-110\n4.417720409942223e-285\n4.417720409942223e-285\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n"}︡{"file":{"filename":"/tmp/tmp730p20ly/tmp_gvq7v75n.svg","show":true,"text":null,"uuid":"65b19fb3-919d-491b-a713-0c2b55298fde"},"once":false}︡{"file":{"filename":"/tmp/tmp730p20ly/tmp_aeb38mra.svg","show":true,"text":null,"uuid":"dff40b8b-c9dd-42a9-8948-85eb868de02c"},"once":false}︡{"file":{"filename":"/tmp/tmp730p20ly/tmp_h5lkkfls.svg","show":true,"text":null,"uuid":"be0de696-20da-4c48-a903-a7f52c0ed80d"},"once":false}︡{"file":{"filename":"/tmp/tmp730p20ly/tmp_tw6ppb7t.svg","show":true,"text":null,"uuid":"200839a4-9b29-47e1-9d98-0f8b5ce8b3eb"},"once":false}︡{"stdout":"kočni GGI:"}︡{"stdout":" 3.146264369941972\nnova vrstica\n  k_max  T_0                  a tip_grafa kaj_iscem  Koncni GGI  st_vozlisc\n0    25  500  0.950000000000000        op       min    3.146264           5\n{'k_max': 25, 'T_0': 500, 'a': 0.950000000000000, 'tip_grafa': 'op', 'kaj_iscem': 'max'}\n0\n"}︡{"stderr":"Error in lines 239-257\n"}︡{"stderr":"Traceback (most recent call last):\n  File \"/cocalc/lib/python3.11/site-packages/smc_sagews/sage_server.py\", line 1244, in execute\n    exec(\n  File \"\", line 6, in <module>\n  File \"\", line 17, in simulirano_ohlajanje\n  File \"\", line 10, in moznost\nTypeError: 'float' object is not callable\n"}︡{"done":true}
 
 
 
