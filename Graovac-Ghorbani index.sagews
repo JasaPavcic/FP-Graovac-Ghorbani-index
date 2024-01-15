@@ -1,13 +1,13 @@
-︠9453b773-46ba-4e24-b830-00e1714a1075︠
+︠2a6b6f1f-afea-4b44-b347-744c705d074b︠
 import sage.all
 import numpy
 import math
 from sage.graphs.trees import TreeIterator
 import random
 from sage.plot.plot import list_plot
+from sage.graphs.random import GaussianRandomGraph
 import itertools
 import pandas as pd
-
 
 #ustvari graf na n vozliščih
 def ustvariGraf(n):
@@ -15,7 +15,7 @@ def ustvariGraf(n):
     G.add_vertices(range(n))
     return G
 
-#funkcija za izračun Graova-Ghorbani indexa
+#funkcija za izračun Graovac-Ghorbani indexa
 def GGI(G):
     n = G.order() #stevilo ogljisc v grafu
     vsota = 0
@@ -23,8 +23,8 @@ def GGI(G):
     for (u, v,_) in G.edges():
         nu_v = sum(1 for x in G.vertices() if G.shortest_path_length(u, x) < G.shortest_path_length(v, x))
         nv_u = sum(1 for x in G.vertices() if G.shortest_path_length(v, x) < G.shortest_path_length(u, x))
-        if nu_v + nv_u - 2 > 0 and nu_v * nv_u != 0 :
-            vsota += math.sqrt((nu_v + nv_u - 2) / (nu_v * nv_u))
+        if nu_v + nv_u - 2 > 0:
+            vsota += sqrt((nu_v + nv_u - 2) / (nu_v * nv_u))
 
     return vsota
 
@@ -82,34 +82,40 @@ def GGI_na_fiksnem_st_vozl(n, tip_grafa):
 
 #a) sosednja stanja
 
+
 #funkcija neighbour doda oziroma odstrani nakljucno povezavo. Funkcija poskrbi, da je nov graf se vedno povezan, istega tipa in da ne dodam povezave, kjer ta ze obstaja.
 def neighbour(G, tip_grafa):
-    S = G.copy()
-    def dodaj_random_povezavo():
+
+    def dodaj_povezavo():
         nonlocal S
         nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
         if nepovezani_pari_vozl:
             uv = random.choice(nepovezani_pari_vozl)
             S.add_edge(uv)
 
-    def odstrani_random_povezavo():
+    def odstrani_drevesno_povezavo():
         nonlocal S
-        if S.edges():
+        random_edge = S.random_edge()
+        while S.is_cut_edge(random_edge):
             random_edge = S.random_edge()
-            while S.is_cut_edge(random_edge):
-                random_edge = S.random_edge()
+        S.delete_edge(random_edge)
+
+    def odstrani_povezavo():
+        nonlocal S
+        if len(S.edges()) > 0:
+            random_edge = S.random_edge()
             S.delete_edge(random_edge)
 
     def povezi():
-        while not S.is_connected():
+        while vsebuje_trikotnik(S) == True or S.is_connected() == False:
             if random.random() < 0.5:
-                add_random_edge()
+                dodaj_povezavo()
             else:
-                remove_random_edge()
-
-
+                odstrani_povezavo()
 
     tipi = {'op', 'bt', 'dr', 'dv'}
+
+    S = G.copy()
 
     if tip_grafa not in tipi:
         raise ValueError("GGI_na_fiksnem_st_vozl: tip_grafa mora biti v %r." % tipi)
@@ -117,16 +123,14 @@ def neighbour(G, tip_grafa):
         if tip_grafa == 'op':
             if random.random() < 0.5: #v tem primeru naceloma odstranjujemo povezave, razen ce imamo drevo
                 if G.is_tree(): #ce imamo drevo, bo vsaka odstranjena povezana povzrocila nepovezan graf, zato v tem primeru povezavo dodamo
-                    dodaj_random_povezavo()
+                    dodaj_povezavo()
                 else: #sicer povezavo odstranimo
-                    odstrani_random_povezavo()
-            else: #v tem primeru naceloma dodajamo povezave, razen ce imamo poln graf
-                dodaj_random_povezavo() if len(S.edges()) < len(S.vertices()) * (len(S.vertices()) - 1) else odstrani_random_povezavo()
+                    odstrani_drevesno_povezavo()
+            else: dodaj_povezavo() if len(S.edges()) < len(S.vertices()) * (len(S.vertices()) - 1) else odstrani_drevesno_povezavo()
             return S
 
         elif tip_grafa == 'dr':
-            random_edge = S.random_edge()
-            S.delete_edge(random_edge) #odstranim nakljucno povezavo, dobim dva locena grafa
+            odstrani_povezavo()
             locena_grafa = S.connected_components() #izmed teh dveh grafov izberem dve nakljucni vozljisci in ju povezem
             u = random.choice(locena_grafa[0])
             v = random.choice(locena_grafa[1])
@@ -149,6 +153,7 @@ def neighbour(G, tip_grafa):
                 S.right.add(vozl)
                 u = random.choice(list(S.left))
                 S.add_edge(vozl, u)
+
             else: #sicer ali dodamo/odstranimo povezavo, ali spremenimo mnozici vozlisc
                 r = random.random()
                 if r < 0.25: #iz leve prestavim na desno eno vozlisce
@@ -156,58 +161,57 @@ def neighbour(G, tip_grafa):
                     S.delete_vertex(vozl)
                     S.right.add(vozl)
                     S.add_vertex(vozl, right=True)
-                    povezi()
+                    while not S.is_connected():
+                        u = random.choice(list(S.left))
+                        S.add_edge(vozl, u)
+                        for vozl in S.right:
+                            if S.degree(vozl) == 0:
+                                levo_vozl = random.choice(list(S.left))
+                                S.add_edge(levo_vozl, vozl)
                 elif 0.25 <= r < 0.5: #iz desne prestavim na levo eno vozlisce
                     vozl = random.choice(list(S.right))
                     S.delete_vertex(vozl)
                     S.left.add(vozl)
                     S.add_vertex(vozl, left = True)
-                    povezi()
+                    while not S.is_connected():
+                        v = random.choice(list(S.right))
+                        S.add_edge(vozl, v)
+                        for vozl in S.left:
+                            if S.degree(vozl) == 0:
+                                desno_vozl = random.choice(list(S.right))
+                                S.add_edge(desno_vozl, vozl)
                 elif 0.5 <= r < 0.75: #dodam povezavo, ce graf se ni poln (v dvodelnem smislu)
                     if len(S.edges()) == len(S.left) * len(S.right): #test za polnost dvodelnega grafa
-                        random_edge = S.random_edge() #v tem primeru odstranim povezavo
-                        S.delete_edge(random_edge)
+                        odstrani_povezavo()
                     else: #sicer jo dodam in pazim, da ne dodam povezave, ki ze obstaja
                         nepovezani_pari_vozl = [(u, v) for u in S.left for v in S.right if not S.has_edge(u, v)]
                         uv = random.choice(nepovezani_pari_vozl)
                         S.add_edge(uv)
 
                 else: #odstranim povezavo in poskrbim, da je graf se vedno povezan
-                    if S.is_tree() == True: #v tem primeru ne morem nobene povezave odstraniti, zato jo dodam
+                    if S.is_tree(): #v tem primeru ne morem nobene povezave odstraniti, zato jo dodam
                         u = random.choice(list(S.left))
                         v = random.choice(list(S.right))
                         S.add_edge(u, v)
                     else: #sicer povezavo odstranim
-                        random_edge = S.random_edge()
-                        while S.is_cut_edge(random_edge):
-                            random_edge = S.random_edge()
-                        S.delete_edge(random_edge)
+                        odstrani_drevesno_povezavo()
             return S
 
         elif tip_grafa == 'bt':
-            if random.random() < 0.5: #v tem primeru najprej dodamo random povezavo in potem 'popravljamo', dokler graf ni ustrezne oblike
-                dodaj_random_povezavo()
-                while vsebuje_trikotnik(S) or not  S.is_connected():
-                    if random.random() < 0.5:
-                        dodaj_random_povezavo()
-                    else:
-                        odstrani_random_povezavo()
-            else: #v tem primeru najprej odstranimo random povezavo in potem 'popravljamo', dokler graf ni ustrezne oblike
+            #dodamo random povezavo in potem 'popravljamo', dokler graf ni ustrezne oblike
+            if random.random() < 0.5:
+                dodaj_povezavo()
+                povezi()
+            else:
+                #odstranimo random povezavo in potem 'popravljamo', dokler graf ni ustrezne oblike
                 random_edge = S.random_edge()
                 S.delete_edge(random_edge)
-                while vsebuje_trikotnik(S) or not S.is_connected():
-                    if random.random() < 0.5:
-                        dodaj_random_povezavo()
-                    else:
-                        if len(S.edges()) > 0:
-                            random_edge = S.random_edge()
-                            S.delete_edge(random_edge)
-
+                povezi()
             return S
 
 
 #b) verjetnost prehoda; razlikuje se glede na to, ali iscemo min ali max
-def moznost(G, G_1, T, kaj_iscem):
+def P(G, G_1, T, kaj_iscem):
     iscem = {'min', 'max'}
     if kaj_iscem not in iscem:
         raise ValueError("simulirano_ohlajanje: kaj_iscem mora biti v %r." % iscem)
@@ -221,8 +225,8 @@ def moznost(G, G_1, T, kaj_iscem):
         if e_1 < e:
             return 1
         else:
-            rezultat = math.exp(-(e_1 - e) / T)
-            return rezultat
+            verjetnost = math.exp(-(e_1 - e) / T)
+            return verjetnost
 
 
 #c) temperaturna funkcija
@@ -244,21 +248,18 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
         sez_verjetnosti = []
         G = G_0
         T = T_0
-        prehod = 0
         for k in range(k_max):
-            T = temperatura(T_0, a, k)  # to funkcijo temperatura moram se razmisliti, to je samo en mozen primer
+            T = temperatura(T, a, k)  # to funkcijo temperatura moram se razmisliti, to je samo en mozen primer
             G_1 = neighbour(G, tip_grafa)
-            print(prehod)
-            prehod = moznost(G, G_1, T, kaj_iscem)
-            print(prehod)
-            v =  random.random()
-            if prehod >= v:
+            p =  random.random()
+            verjetnost_prehoda = P(G, G_1, T, kaj_iscem)
+            if verjetnost_prehoda >= p:
                 G = G_1
 
             sez_tuplov_k_temp.append((k, T)) #na pomozne sezname dodam vrednosti
             sez_tuplov_k_ggi.append((k, GGI(G)))
             sez_ggi.append(GGI(G))
-            sez_verjetnosti.append((k, prehod))
+            sez_verjetnosti.append((k, verjetnost_prehoda))
 
         p = list_plot(sez_tuplov_k_temp, title = 'T(k)', plotjoined = True) #narisem podatke, ki mi bodo v pomoc
         p.show()
@@ -277,15 +278,21 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
         return G
 
 
-#while not F.is_connected():
-#    F = graphs.RandomBipartite(16, 10, 0.5)
 
-#g = simulirano_ohlajanje(O, 5, 1000, 0.96, 'bt', 'max')
-#g.plot()
-#l = GGI_na_fiksnem_st_vozl(6, 'bt')
+
+###
 
 #F = graphs.RandomTree(15)
 
+###
+
+#F = graphs.RandomBipartite(16, 10, 0.5)
+
+###
+
+#F = GaussianRandomGraph(10, 0.5 , 0.1)
+
+###
 
 
 
@@ -311,7 +318,7 @@ rezultati_df = pd.DataFrame(columns=['k_max', 'T_0', 'a', 'tip_grafa', 'kaj_isce
 
 
 
-####simulacija (nekak treba nardit, da ne generira samo dreves)
+####simulacija (treba dodat, da ne bo delal samo na drevesih)
 for n in range(5,6):
     print('število vozlišč:',n)
     F = graphs.RandomTree(n)
@@ -319,14 +326,14 @@ for n in range(5,6):
         print(mozna_kombinacija)
         G = simulirano_ohlajanje(F, mozna_kombinacija['k_max'], mozna_kombinacija['T_0'], mozna_kombinacija['a'], mozna_kombinacija['tip_grafa'], mozna_kombinacija['kaj_iscem'])
         G.plot()
-        GGI = GGI(G)
-        print('kočni GGI:',GGI)
+        vGGI = float(GGI(G))
+        print('kočni GGI:',vGGI)
         nova_vrstica = [mozna_kombinacija['k_max'],
                         mozna_kombinacija['T_0'],
                         mozna_kombinacija['a'],
                         mozna_kombinacija['tip_grafa'],
                         mozna_kombinacija['kaj_iscem'],
-                        GGI,
+                        vGGI,
                         n]
         print('nova vrstica')
         rezultati_df.loc[len(rezultati_df)] = nova_vrstica
@@ -334,8 +341,14 @@ for n in range(5,6):
 
 print(rezultati_df)
 
-#treba se obdelat podatke
-︡b604d2bf-ebae-4be8-84df-7ceea29a0a44︡{"stdout":"število vozlišč: 5\n{'k_max': 25, 'T_0': 500, 'a': 0.950000000000000, 'tip_grafa': 'op', 'kaj_iscem': 'min'}\n0\n0.998904224483749\n0.998904224483749\n1\n1\n0.9991998719279944\n0.9991998719279944\n0.9575258794668249\n0.9575258794668249\n0.9521722553848516\n0.9521722553848516\n1\n1\n1\n1\n0.2014919968379291\n0.2014919968379291\n1\n1\n0.003466162549028181\n0.003466162549028181\n4.352748788604278e-07\n4.352748788604278e-07\n3.561964640487387e-17\n3.561964640487387e-17\n1.3801435607449119e-55\n1.3801435607449119e-55\n1.0674141065222018e-110\n1.0674141065222018e-110\n4.417720409942223e-285\n4.417720409942223e-285\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n0.0\n"}︡{"file":{"filename":"/tmp/tmp730p20ly/tmp_gvq7v75n.svg","show":true,"text":null,"uuid":"65b19fb3-919d-491b-a713-0c2b55298fde"},"once":false}︡{"file":{"filename":"/tmp/tmp730p20ly/tmp_aeb38mra.svg","show":true,"text":null,"uuid":"dff40b8b-c9dd-42a9-8948-85eb868de02c"},"once":false}︡{"file":{"filename":"/tmp/tmp730p20ly/tmp_h5lkkfls.svg","show":true,"text":null,"uuid":"be0de696-20da-4c48-a903-a7f52c0ed80d"},"once":false}︡{"file":{"filename":"/tmp/tmp730p20ly/tmp_tw6ppb7t.svg","show":true,"text":null,"uuid":"200839a4-9b29-47e1-9d98-0f8b5ce8b3eb"},"once":false}︡{"stdout":"kočni GGI:"}︡{"stdout":" 3.146264369941972\nnova vrstica\n  k_max  T_0                  a tip_grafa kaj_iscem  Koncni GGI  st_vozlisc\n0    25  500  0.950000000000000        op       min    3.146264           5\n{'k_max': 25, 'T_0': 500, 'a': 0.950000000000000, 'tip_grafa': 'op', 'kaj_iscem': 'max'}\n0\n"}︡{"stderr":"Error in lines 239-257\n"}︡{"stderr":"Traceback (most recent call last):\n  File \"/cocalc/lib/python3.11/site-packages/smc_sagews/sage_server.py\", line 1244, in execute\n    exec(\n  File \"\", line 6, in <module>\n  File \"\", line 17, in simulirano_ohlajanje\n  File \"\", line 10, in moznost\nTypeError: 'float' object is not callable\n"}︡{"done":true}
+###obdelava podatkov
+
+
+grupirani = df.groupby(['st_vozlisc', 'tip_grafa', 'kaj_iscem'])
+
+#maksimum za določene kombinacije
+
+rezultati = grouped_df.apply(lambda x: x.loc[x['Koncni GGI'].idxmax()])
 
 
 
