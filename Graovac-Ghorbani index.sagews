@@ -1,19 +1,15 @@
-︠2a6b6f1f-afea-4b44-b347-744c705d074b︠
+︠2a6b6f1f-afea-4b44-b347-744c705d074br︠
 import sage.all
 import numpy
 import math
 from sage.graphs.trees import TreeIterator
 import random
 from sage.plot.plot import list_plot
-from sage.graphs.random import GaussianRandomGraph
 import itertools
 import pandas as pd
+import networkx as nx
 
-#ustvari graf na n vozliščih
-def ustvariGraf(n):
-    G = Graph()
-    G.add_vertices(range(n))
-    return G
+
 
 #funkcija za izračun Graovac-Ghorbani indexa
 def GGI(G):
@@ -124,10 +120,28 @@ def neighbour(G, tip_grafa):
             if random.random() < 0.5: #v tem primeru naceloma odstranjujemo povezave, razen ce imamo drevo
                 if G.is_tree(): #ce imamo drevo, bo vsaka odstranjena povezana povzrocila nepovezan graf, zato v tem primeru povezavo dodamo
                     dodaj_povezavo()
+
+
+#               REŠITEV: LIZA
                 else: #sicer povezavo odstranimo
-                    odstrani_drevesno_povezavo()
-            else: dodaj_povezavo() if len(S.edges()) < len(S.vertices()) * (len(S.vertices()) - 1) else odstrani_drevesno_povezavo()
+                    random_edge = S.random_edge()
+                    while S.is_cut_edge(random_edge) == True:
+                        random_edge = S.random_edge()
+                    S.delete_edge(random_edge)
+            else: #v tem primeru naceloma dodajamo povezave, razen ce imamo poln graf
+                nepovezani_pari_vozl = [(u, v) for u in S.vertices() for v in S.vertices() if u != v and not S.has_edge(u, v)]
+                if len(nepovezani_pari_vozl) == 0: #v primeru polnega grafa odstranimo povezavo
+                    random_edge = S.random_edge()
+                    S.delete_edge(random_edge)
+                else: #sicer jo dodamo
+                    uv = random.choice(nepovezani_pari_vozl)
+                    S.add_edge(uv)
             return S
+#             REŠITEV: JAŠA
+#                 else: #sicer povezavo odstranimoAffineOrthogonalPolarGraph
+#                     odstrani_drevesno_povezavo()
+#             else: dodaj_povezavo() if len(S.edges()) < len(S.vertices()) * (len(S.vertices()) - 1) else odstrani_drevesno_povezavo()
+#             return S
 
         elif tip_grafa == 'dr':
             odstrani_povezavo()
@@ -194,7 +208,11 @@ def neighbour(G, tip_grafa):
                         v = random.choice(list(S.right))
                         S.add_edge(u, v)
                     else: #sicer povezavo odstranim
-                        odstrani_drevesno_povezavo()
+                        random_edge = S.random_edge()
+                        while S.is_cut_edge(random_edge) == True:
+                            random_edge = S.random_edge()
+                        S.delete_edge(random_edge)
+#                        odstrani_drevesno_povezavo()
             return S
 
         elif tip_grafa == 'bt':
@@ -262,7 +280,7 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
             sez_verjetnosti.append((k, verjetnost_prehoda))
 
         p = list_plot(sez_tuplov_k_temp, title = 'T(k)', plotjoined = True) #narisem podatke, ki mi bodo v pomoc
-        p.show()
+        #p.show()
         sez_tuplov_k_min = []
         if kaj_iscem == 'min':
             m = numpy.minimum.accumulate(sez_ggi)
@@ -272,36 +290,21 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem):
             sez_tuplov_k_min.append((i, m[i]))
         l = list_plot(sez_tuplov_k_ggi, title = 'GGI(k)', plotjoined = True)
         l += list_plot(sez_tuplov_k_min, plotjoined = True, color = 'red')
-        l.show()
+        #l.show()
         j = list_plot(sez_verjetnosti, title = 'verjetnost prehoda(k)', plotjoined = True)
-        j.show()
+        #j.show()
         return G
 
 
-
-
-###
-
-#F = graphs.RandomTree(15)
-
-###
-
-#F = graphs.RandomBipartite(16, 10, 0.5)
-
-###
-
-#F = GaussianRandomGraph(10, 0.5 , 0.1)
-
-###
 
 
 
 #3. del - eksperimentiranje
 
 ###mozni parametri
-k_max_vrednosti = [25, 50, 100]
-T_0_vrednosti = [500, 1000, 2000,5000,10000]
-a_vrednosti = [0.95, 0.96, 0.97, 0.99]
+k_max_vrednosti = [25]
+T_0_vrednosti = [500, 1000]
+a_vrednosti = [0.95, 0.96]
 tip_grafa_vrednosti = ['op', 'bt', 'dr', 'dv']
 kaj_iscem_vrednosti = ['min', 'max']
 
@@ -318,37 +321,70 @@ rezultati_df = pd.DataFrame(columns=['k_max', 'T_0', 'a', 'tip_grafa', 'kaj_isce
 
 
 
+def grafBrezTrikotnika(n):
+    g = graphs.RandomGNP(n,0.4)
+    while vsebuje_trikotnik(g):
+        g = graphs.RandomGNP(n,0.4)
+    return g
+
+
 ####simulacija (treba dodat, da ne bo delal samo na drevesih)
-for n in range(5,6):
-    print('število vozlišč:',n)
-    F = graphs.RandomTree(n)
-    for mozna_kombinacija in mozne_kombinacije:
-        print(mozna_kombinacija)
-        G = simulirano_ohlajanje(F, mozna_kombinacija['k_max'], mozna_kombinacija['T_0'], mozna_kombinacija['a'], mozna_kombinacija['tip_grafa'], mozna_kombinacija['kaj_iscem'])
-        G.plot()
-        vGGI = float(GGI(G))
-        print('kočni GGI:',vGGI)
-        nova_vrstica = [mozna_kombinacija['k_max'],
-                        mozna_kombinacija['T_0'],
-                        mozna_kombinacija['a'],
-                        mozna_kombinacija['tip_grafa'],
-                        mozna_kombinacija['kaj_iscem'],
-                        vGGI,
-                        n]
-        print('nova vrstica')
-        rezultati_df.loc[len(rezultati_df)] = nova_vrstica
+n = 5
+
+print('število vozlišč:',n)
+
+grafi2 = {
+          'bt' : grafBrezTrikotnika(n),
+          'dv' : graphs.RandomBipartite(n,n, p = 0.5),
+          'op' : graphs.RandomGNP(n,.4),
+          'dr' : graphs.RandomTree(n)
+          }
+
+for key,value in grafi2.items():
+    tip_grafa = key
+    F = value
+    for kaj_iscem in ('min', 'max'):
+
+        print('iscem \b ' + kaj_iscem + '\b pri  \b'  + str(n) + '\b vozliščih na \b' + tip_grafa + '\b grafu')
+
+        if kaj_iscem == 'max':
+            ekstrem = 0
+            graf = F
+        else:
+            ekstrem = n
+            graf = F
+        for mozna_kombinacija in mozne_kombinacije:
+            G = simulirano_ohlajanje(F, mozna_kombinacija['k_max'], mozna_kombinacija['T_0'], mozna_kombinacija['a'], tip_grafa, kaj_iscem)
+            #G.plot()
+            vGGI = float(GGI(G))
+            print('kočni GGI:',vGGI)
+            if kaj_iscem == 'max' and vGGI > ekstrem:
+                ekstrem = vGGI
+                graf = G
+            elif kaj_iscem == 'min' and vGGI < ekstrem:
+                ekstrem = vGGI
+                graf = G
+            else:
+                ekstrem = ekstrem
+                graf = graf
+
+            nova_vrstica = [mozna_kombinacija['k_max'],
+                            mozna_kombinacija['T_0'],
+                            mozna_kombinacija['a'],
+                            tip_grafa,
+                            kaj_iscem,
+                            vGGI,
+                            n]
+            #print('nova vrstica')
+            rezultati_df.loc[len(rezultati_df)] = nova_vrstica
+
         print(rezultati_df)
-
-print(rezultati_df)
-
-###obdelava podatkov
+        print('to je \b' + kaj_iscem + '\b za \b' + tip_grafa + '\b na: \b' + str(n) + '\b vozliščih \n ' + str(vGGI) )
+        graf.plot()
 
 
-grupirani = df.groupby(['st_vozlisc', 'tip_grafa', 'kaj_iscem'])
 
-#maksimum za določene kombinacije
-
-rezultati = grouped_df.apply(lambda x: x.loc[x['Koncni GGI'].idxmax()])
+#print(rezultati_df)
 
 
 
