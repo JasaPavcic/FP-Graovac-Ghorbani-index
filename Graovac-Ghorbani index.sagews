@@ -1,4 +1,4 @@
-︠788770f2-a86a-49e2-9b75-2cf8f767f010︠
+︠211c41c8-2909-4f1a-807f-3c6db234ea05︠
 import sage.all
 import numpy
 import math
@@ -32,6 +32,14 @@ def vsebuje_trikotnik(G):
             if G.has_edge(vozl, povezava[0]) and G.has_edge(vozl, povezava[1]):
                 return True
     return False
+
+
+def grafBrezTrikotnika(n):
+    g = graphs.RandomGNP(n, 0.5)
+    while vsebuje_trikotnik(g) == True or g.is_connected() == False:
+        g = graphs.RandomGNP(n, 0.5)
+    return g
+
 
 #1. del - tocno racunanje
 
@@ -72,12 +80,14 @@ def GGI_na_fiksnem_st_vozl(n, tip_grafa, show_plot=True):
                 print(indeks)
         return seznam
 
+#nekaj testnih primerov:
+#GGI_na_fiksnem_st_vozl(5, 'op', show_plot=True)
+#GGI_na_fiksnem_st_vozl(6, 'bt', show_plot=True)
+#GGI_na_fiksnem_st_vozl(9, 'dv', show_plot=True)
+#GGI_na_fiksnem_st_vozl(8, 'dr', show_plot=True)
+    
 #2. del - simulirano ohlajanje
-
-#definiram parametre
-
 #a) sosednja stanja
-
 
 #funkcija neighbour doda oziroma odstrani nakljucno povezavo. Funkcija poskrbi, da je nov graf se vedno povezan, istega tipa in da ne dodam povezave, kjer ta ze obstaja.
 def neighbour(G, tip_grafa):
@@ -206,7 +216,24 @@ def neighbour(G, tip_grafa):
                 povezi()
         return S
 
+#nekaj testnih primerov:
+#OP = grafBrezTrikotnika(7)
+#OP.plot()
+#neighbour(OP, 'op').plot()
 
+#DV = graphs.RandomBipartite(6, 7, p = 0.5)
+#DV.plot()
+#neighbour(DV, 'dv').plot()
+
+#DR = graphs.RandomTree(10)
+#DR.plot()
+#neighbour(DR, 'dr').plot()
+
+#BT = grafBrezTrikotnika(9)
+#BT.plot()
+#neighbour(BT, 'bt').plot()
+    
+    
 #b) verjetnost prehoda; razlikuje se glede na to, ali iscemo min ali max
 def P(G, G_1, T, kaj_iscem):
     iscem = {'min', 'max'}
@@ -224,6 +251,7 @@ def P(G, G_1, T, kaj_iscem):
         else:
             verjetnost = math.exp(-(e_1 - e) / T)
             return verjetnost
+
 
 
 #c) temperaturna funkcija
@@ -272,100 +300,12 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem, show_plot=Tru
             j = list_plot(sez_verjetnosti, title = 'verjetnost prehoda(k)', plotjoined = True)
             j.show()
         return G
-
-#tole si loh za test zazenes, mislim da uredu dela:
-
-#simulirano_ohlajanje(graphs.RandomBipartite(6,7, p = 0.5), 500, 500, 0.95, 'dv', 'max')
-#simulirano_ohlajanje(graphs.RandomTree(10), 500, 500, 0.95, 'op', 'min')
-
-#3. del - eksperimentiranje
-
-###mozni parametri
-k_max_vrednosti = [200] #malo sem povecala stevilo korakov
-T_0_vrednosti = [1000]
-a_vrednosti = [0.9]
-tip_grafa_vrednosti = ['op', 'bt', 'dr', 'dv']
-kaj_iscem_vrednosti = ['min', 'max']
-
-####ustvari kombinacije
-mozne_kombinacije = list(itertools.product(k_max_vrednosti, T_0_vrednosti, a_vrednosti, tip_grafa_vrednosti, kaj_iscem_vrednosti))
-
-####lepsi format
-mozne_kombinacije = [{'k_max': k_max, 'T_0': T_0, 'a': a, 'tip_grafa': tip_grafa, 'kaj_iscem': kaj_iscem} for
-                  (k_max, T_0, a, tip_grafa, kaj_iscem) in mozne_kombinacije]
-
-
-####tabela rezultatov
-rezultati_df = pd.DataFrame(columns=['k_max', 'T_0', 'a', 'tip_grafa', 'kaj_iscem', 'Koncni GGI', 'st_vozlisc'])
-
-
-
-def grafBrezTrikotnika(n):
-    g = graphs.RandomGNP(n,0.4)
-    while vsebuje_trikotnik(g):
-        g = graphs.RandomGNP(n,0.4)
-    return g
-
-
-####eksperiment
-for n in(8):
-    print('število vozlišč:', n)
     
-    #možne strukture grafov
-    grafi2 = {
-              'bt' : grafBrezTrikotnika(n)
-              'dv' : graphs.RandomBipartite(n,n, p = 0.5)
-              'op' : graphs.RandomGNP(n,.4)
-              'dr' : graphs.RandomTree(n)
-              }
-    začetek = time.time()
-    for key,value in grafi2.items():
-
-        tip_grafa = key
-        F = value
-        for kaj_iscem in ('min','max'):
-
-            print('iscem \b ' + kaj_iscem + '\b pri  \b'  + str(n) + '\b vozliščih na \b' + tip_grafa + '\b grafu')
-
-            if kaj_iscem == 'max':
-                ekstrem = 0
-                graf = F
-            else:
-                ekstrem = n
-                graf = F
-            #iteracija skozi vse možne kombinacije parametrov
-            for mozna_kombinacija in mozne_kombinacije:
-                G = simulirano_ohlajanje(F, mozna_kombinacija['k_max'], mozna_kombinacija['T_0'], mozna_kombinacija['a'], tip_grafa, kaj_iscem, False) #parameter False poskrbi za to da se ti ne bodo na vsakem koraku risali grafi
-                vGGI = float(GGI(G))
-                print('kočni GGI:',vGGI)
-                #shranjevanje optimalne vrednosti glede na vhod kaj_iscem
-                if kaj_iscem == 'max' and vGGI > ekstrem:
-                    ekstrem = vGGI
-                    graf = G
-                elif kaj_iscem == 'min' and vGGI < ekstrem:
-                    ekstrem = vGGI
-                    graf = G
-                else:
-                    ekstrem = ekstrem
-                    graf = graf
-                #konec i-te iteracije in zapis rezultatov v tabelo za lažji pregled
-                nova_vrstica = [mozna_kombinacija['k_max'],
-                                mozna_kombinacija['T_0'],
-                                mozna_kombinacija['a'],
-                                tip_grafa,
-                                kaj_iscem,
-                                vGGI,
-                                n]
-                rezultati_df.loc[len(rezultati_df)] = nova_vrstica
-
-            print(rezultati_df)
-            print('to je \b' + kaj_iscem + '\b za \b' + tip_grafa + '\b na: \b' + str(n) + '\b vozliščih \n ' + str(ekstrem) )
-            graf.plot()
-    konec = time.time()
-
-    #izpis časa izvajanja celotne zanke
-    čas_izvajanja_zanke = konec - začetek
-    print('eksperiment na: \b'+ str(n) + '\b vozliščih sem izvajal: \b' + str(čas_izvajanja_zanke) + ' \b sekund' )
+#nekaj testnih primerov:
+#simulirano_ohlajanje(graphs.RandomBipartite(6, 7, p = 0.5), 500, 500, 0.95, 'dv', 'max')
+#simulirano_ohlajanje(graphs.RandomTree(10), 500, 500, 0.95, 'op', 'min')
+#simulirano_ohlajanje(grafBrezTrikotnika(9), 500, 800, 0.97, 'bt', 'min')
+#simulirano_ohlajanje(graphs.RandomTree(7), 500, 900, 0.96, 'dr', 'min')
 
 
 
