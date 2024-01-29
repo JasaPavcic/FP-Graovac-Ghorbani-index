@@ -1,4 +1,4 @@
-︠788770f2-a86a-49e2-9b75-2cf8f767f010r︠
+︠788770f2-a86a-49e2-9b75-2cf8f767f010︠
 import sage.all
 import numpy
 import math
@@ -8,6 +8,7 @@ from sage.plot.plot import list_plot
 import itertools
 import pandas as pd
 import networkx as nx
+import time
 
 
 
@@ -191,7 +192,7 @@ def neighbour(G, tip_grafa):
                         S.add_edge(u, v)
                     else: #sicer povezavo odstranim
                         odstrani_drevesno_povezavo()
- 
+
 
         elif tip_grafa == 'bt':
             #dodamo random povezavo in potem 'popravljamo', dokler graf ni ustrezne oblike
@@ -244,7 +245,7 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem, show_plot=Tru
         sez_verjetnosti = []
         G = G_0
         for k in range(k_max):
-            T = temperatura(T_0, a, k)  # to funkcijo temperatura moram se razmisliti, to je samo en mozen primer
+            T = temperatura(T_0, a, k)
             G_1 = neighbour(G, tip_grafa)
             p =  random.random()
             verjetnost_prehoda = P(G, G_1, T, kaj_iscem)
@@ -280,9 +281,9 @@ def simulirano_ohlajanje(G_0, k_max, T_0, a, tip_grafa, kaj_iscem, show_plot=Tru
 #3. del - eksperimentiranje
 
 ###mozni parametri
-k_max_vrednosti = [100, 600] #malo sem povecala stevilo korakov
-T_0_vrednosti = [500, 1000]
-a_vrednosti = [0.95, 0.96]
+k_max_vrednosti = [200] #malo sem povecala stevilo korakov
+T_0_vrednosti = [1000]
+a_vrednosti = [0.9]
 tip_grafa_vrednosti = ['op', 'bt', 'dr', 'dv']
 kaj_iscem_vrednosti = ['min', 'max']
 
@@ -306,62 +307,65 @@ def grafBrezTrikotnika(n):
     return g
 
 
-####simulacija (treba dodat, da ne bo delal samo na drevesih)
-n = 5
-print('število vozlišč:', n)
+####eksperiment
+for n in(8):
+    print('število vozlišč:', n)
+    
+    #možne strukture grafov
+    grafi2 = {
+              'bt' : grafBrezTrikotnika(n)
+              'dv' : graphs.RandomBipartite(n,n, p = 0.5)
+              'op' : graphs.RandomGNP(n,.4)
+              'dr' : graphs.RandomTree(n)
+              }
+    začetek = time.time()
+    for key,value in grafi2.items():
 
-grafi2 = {
-          'bt' : grafBrezTrikotnika(n),
-          'dv' : graphs.RandomBipartite(n,n, p = 0.5),
-          'op' : graphs.RandomGNP(n,.4),
-          'dr' : graphs.RandomTree(n)
-          }
+        tip_grafa = key
+        F = value
+        for kaj_iscem in ('min','max'):
 
-for key,value in grafi2.items():
-    tip_grafa = key
-    F = value
-    for kaj_iscem in ('min', 'max'):
+            print('iscem \b ' + kaj_iscem + '\b pri  \b'  + str(n) + '\b vozliščih na \b' + tip_grafa + '\b grafu')
 
-        #print('iscem \b ' + kaj_iscem + '\b pri  \b'  + str(n) + '\b vozliščih na \b' + tip_grafa + '\b grafu')
-
-        if kaj_iscem == 'max':
-            ekstrem = 0
-            graf = F
-        else:
-            ekstrem = n
-            graf = F
-        for mozna_kombinacija in mozne_kombinacije:
-            G = simulirano_ohlajanje(F, mozna_kombinacija['k_max'], mozna_kombinacija['T_0'], mozna_kombinacija['a'], tip_grafa, kaj_iscem, False) #parameter False poskrbi za to da se ti ne bodo na vsakem koraku risali grafi
-            #G.plot()
-            vGGI = float(GGI(G))
-            #print('kočni GGI:',vGGI)
-            if kaj_iscem == 'max' and vGGI > ekstrem:
-                ekstrem = vGGI
-                graf = G
-            elif kaj_iscem == 'min' and vGGI < ekstrem:
-                ekstrem = vGGI
-                graf = G
+            if kaj_iscem == 'max':
+                ekstrem = 0
+                graf = F
             else:
-                ekstrem = ekstrem
-                graf = graf
+                ekstrem = n
+                graf = F
+            #iteracija skozi vse možne kombinacije parametrov
+            for mozna_kombinacija in mozne_kombinacije:
+                G = simulirano_ohlajanje(F, mozna_kombinacija['k_max'], mozna_kombinacija['T_0'], mozna_kombinacija['a'], tip_grafa, kaj_iscem, False) #parameter False poskrbi za to da se ti ne bodo na vsakem koraku risali grafi
+                vGGI = float(GGI(G))
+                print('kočni GGI:',vGGI)
+                #shranjevanje optimalne vrednosti glede na vhod kaj_iscem
+                if kaj_iscem == 'max' and vGGI > ekstrem:
+                    ekstrem = vGGI
+                    graf = G
+                elif kaj_iscem == 'min' and vGGI < ekstrem:
+                    ekstrem = vGGI
+                    graf = G
+                else:
+                    ekstrem = ekstrem
+                    graf = graf
+                #konec i-te iteracije in zapis rezultatov v tabelo za lažji pregled
+                nova_vrstica = [mozna_kombinacija['k_max'],
+                                mozna_kombinacija['T_0'],
+                                mozna_kombinacija['a'],
+                                tip_grafa,
+                                kaj_iscem,
+                                vGGI,
+                                n]
+                rezultati_df.loc[len(rezultati_df)] = nova_vrstica
 
-            nova_vrstica = [mozna_kombinacija['k_max'],
-                            mozna_kombinacija['T_0'],
-                            mozna_kombinacija['a'],
-                            tip_grafa,
-                            kaj_iscem,
-                            vGGI,
-                            n]
-            #print('nova vrstica')
-            rezultati_df.loc[len(rezultati_df)] = nova_vrstica
+            print(rezultati_df)
+            print('to je \b' + kaj_iscem + '\b za \b' + tip_grafa + '\b na: \b' + str(n) + '\b vozliščih \n ' + str(ekstrem) )
+            graf.plot()
+    konec = time.time()
 
-        #print(rezultati_df)
-        #print('to je \b' + kaj_iscem + '\b za \b' + tip_grafa + '\b na: \b' + str(n) + '\b vozliščih \n ' + str(vGGI) )
-        #graf.plot()
-
-
-rezultati_df
-
+    #izpis časa izvajanja celotne zanke
+    čas_izvajanja_zanke = konec - začetek
+    print('eksperiment na: \b'+ str(n) + '\b vozliščih sem izvajal: \b' + str(čas_izvajanja_zanke) + ' \b sekund' )
 
 
 
