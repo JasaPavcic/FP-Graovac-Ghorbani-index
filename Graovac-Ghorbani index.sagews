@@ -80,10 +80,10 @@ def GGI_na_fiksnem_st_vozl(n, tip_grafa, show_plot=True):
         return seznam
 
 #nekaj testnih primerov:
-#GGI_na_fiksnem_st_vozl(5, 'op', show_plot=True)
-#GGI_na_fiksnem_st_vozl(6, 'bt', show_plot=True)
-#GGI_na_fiksnem_st_vozl(9, 'dv', show_plot=True)
-#GGI_na_fiksnem_st_vozl(8, 'dr', show_plot=True)
+#GGI_na_fiksnem_st_vozl(5, 'op')
+#GGI_na_fiksnem_st_vozl(6, 'bt')
+#GGI_na_fiksnem_st_vozl(9, 'dv')
+#GGI_na_fiksnem_st_vozl(8, 'dr')
 
 #2. del - simulirano ohlajanje
 #a) sosednja stanja
@@ -188,7 +188,7 @@ def neighbour(G, tip_grafa):
                                 S.add_edge(desno_vozl, vozl)
                 elif 0.5 <= r < 0.75: #dodam povezavo, ce graf se ni poln (v dvodelnem smislu)
                     if len(S.edges()) == len(S.left) * len(S.right): #test za polnost dvodelnega grafa
-                        odstrani_povezavo()
+                        odstrani_drevesno_povezavo()
                     else: #sicer jo dodam in pazim, da ne dodam povezave, ki ze obstaja
                         nepovezani_pari_vozl = [(u, v) for u in S.left for v in S.right if not S.has_edge(u, v)]
                         uv = random.choice(nepovezani_pari_vozl)
@@ -221,6 +221,7 @@ def neighbour(G, tip_grafa):
 #neighbour(OP, 'op').plot()
 
 #DV = graphs.RandomBipartite(6, 7, p = 0.5)
+#DV = BipartiteGraph(DV)
 #DV.plot()
 #neighbour(DV, 'dv').plot()
 
