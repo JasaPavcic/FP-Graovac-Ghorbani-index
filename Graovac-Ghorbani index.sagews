@@ -9,8 +9,6 @@ import pandas as pd
 import networkx as nx
 import time
 
-
-
 #funkcija za izračun Graovac-Ghorbani indexa
 def GGI(G):
     n = G.order() #stevilo ogljisc v grafu
@@ -130,6 +128,7 @@ def neighbour(G, tip_grafa):
                 else: #sicer povezavo odstranimo
                     odstrani_drevesno_povezavo()
             else: #v tem primeru naceloma dodajamo povezave, razen ce imamo poln graf
+                n = len(S.vertices())
                 if len(S.edges()) == n*(n-1)/2:  #v tem primeru je graf poln
                     odstrani_drevesno_povezavo()
                 else:
